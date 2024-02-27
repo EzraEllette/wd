@@ -1,6 +1,8 @@
-use std::process::exit;
-
 use clap::Parser;
+use std::process::exit;
+use warper::Warper;
+
+mod warper;
 
 #[derive(Parser)]
 struct Cli {
@@ -11,6 +13,7 @@ struct Cli {
 
 fn main() {
     let args = Cli::parse();
+    let mut warper = Warper::new(".wd", "warps.json");
 
     match args.name.as_str() {
         "add" | "rm" | "list" => {
@@ -21,9 +24,9 @@ fn main() {
     }
 
     match args.command.as_str() {
-        "add" => wd::add_warp(args.name),
-        "rm" => wd::remove_warp(args.name),
-        "list" => wd::list_warps(),
-        _ => wd::warp(args.command),
+        "add" => warper.add_warp(args.name),
+        "rm" => warper.remove_warp(args.name),
+        "list" => warper.list_warps(),
+        _ => warper.warp(args.command),
     }
 }
