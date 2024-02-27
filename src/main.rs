@@ -1,5 +1,6 @@
 use clap::Parser;
 use std::process::exit;
+use warper::Warper;
 
 mod warper;
 
@@ -12,7 +13,7 @@ struct Cli {
 
 fn main() {
     let args = Cli::parse();
-    let warper = warper::Warper::new(".wd", "warps.json");
+    let mut warper = Warper::new(".wd", "warps.json");
 
     match args.name.as_str() {
         "add" | "rm" | "list" => {

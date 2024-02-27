@@ -1,13 +1,9 @@
-use std::{
-    fs,
-    path::{Path, PathBuf},
-};
+use std::{fs, io::ErrorKind, path::PathBuf, process::exit};
 
 use serde_json::{json, Value};
 
 pub struct Warper {
     warps_dir: PathBuf,
-    warps_filename: String,
     current_directory: PathBuf,
     warps_filepath: PathBuf,
 }
@@ -25,14 +21,12 @@ impl Warper {
         Self {
             warps_dir,
             current_directory,
-            warps_filename: warps_filename.to_string(),
             warps_filepath,
         }
     }
 
     pub fn get_warps(&mut self) -> serde_json::Map<std::string::String, Value> {
-        let raw_warps_result =
-            fs::read_to_string(Path::join(&self.warps_dir, self.warps_filename.as_str()));
+        let raw_warps_result = fs::read_to_string(&self.warps_filepath);
 
         if raw_warps_result.is_err() {
             self.create_warps_file();
@@ -52,13 +46,15 @@ impl Warper {
         }
     }
 
-    pub fn create_warps_file(&mut self) {
-        fs::create_dir(&self.warps_dir).expect("Could not create directory for warps.");
-        let warps_path = self.warps_dir.join("warps.json");
-        fs::write(warps_path, "{}").expect("Could not write to warps file.");
+    fn create_warps_file(&mut self) {
+        if fs::create_dir(&self.warps_dir).is_err_and(|e| e.kind() != ErrorKind::AlreadyExists) {
+            eprintln!("Could not create warps directory");
+            exit(1);
+        }
+        fs::write(&self.warps_filepath, "{}").expect("Could not write to warps file.");
     }
 
-    pub fn add_warp(mut self, name: String) {
+    pub fn add_warp(&mut self, name: String) {
         let mut warps = self.get_warps();
         let warp_path = warps.get(&name);
 
@@ -74,13 +70,13 @@ impl Warper {
             .expect("Warp could not be added.");
     }
 
-    pub fn set_warps(self, warps: Value) -> Result<(), std::io::Error> {
-        let warps_file_path = self.warps_dir.join("warps.json");
+    fn set_warps(&self, warps: Value) -> Result<(), std::io::Error> {
+        let warps_file_path = &self.warps_filepath;
 
         fs::write(warps_file_path, warps.to_string())
     }
 
-    pub fn warp(mut self, name: String) {
+    pub fn warp(&mut self, name: String) {
         let warps = self.get_warps();
 
         let warp_path = warps.get(&name);
@@ -93,7 +89,7 @@ impl Warper {
         print!("{}", warp_path.unwrap().as_str().unwrap());
     }
 
-    pub fn remove_warp(mut self, name: String) {
+    pub fn remove_warp(&mut self, name: String) {
         let mut warps = self.get_warps();
 
         warps.remove(&name);
@@ -101,4 +97,42 @@ impl Warper {
         self.set_warps(json!(warps))
             .expect(format!("Could not remove warp {}", name).as_str());
     }
+}
+
+#[test]
+fn test_add_warp() {
+    let warps_filename: &str = "test_add_warp.json";
+    let warp_name: &str = "test";
+    let mut warper = Warper::new(".", warps_filename);
+
+    warper.add_warp(warp_name.to_string());
+
+    let warps = warper.get_warps();
+
+    assert_eq!(warps[warp_name].as_str(), warper.current_directory.to_str());
+
+    fs::remove_file(warper.warps_filepath)
+        .expect(format!("Could not delete {}", warps_filename).as_str());
+}
+
+#[test]
+fn test_remove_warp() {
+    let warps_filename: &str = "test_remove_warp.json";
+    let warp_name: &str = "test";
+    let mut warper = Warper::new(".", warps_filename);
+
+    warper.add_warp(warp_name.to_string());
+
+    let warps = warper.get_warps();
+
+    assert_eq!(warps[warp_name].as_str(), warper.current_directory.to_str());
+
+    warper.remove_warp(warp_name.to_string());
+
+    let warps_removed = warper.get_warps();
+
+    assert!(warps_removed.get(warp_name).is_none());
+
+    fs::remove_file(warper.warps_filepath)
+        .expect(format!("Could not delete {}", warps_filename).as_str());
 }
