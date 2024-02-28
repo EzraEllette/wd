@@ -13,12 +13,12 @@ The purpose and functionality is to set aliases for commonly visited directories
 
 ## Installation
 
-Copy release binary to `~/.cargo/bin/wd`.
+Copy release binary to somewhere in your path.
 
 add a command to your `.zshrc` or `.bashrc` file like so:
 ```bash
 wd () {
-	dir=$(~/.cargo/bin/wd "$@")
+	dir=$(<binary_location> "$@")
 	if [[ -n "$dir" ]]
 	then
 		cd "$dir"
